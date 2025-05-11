@@ -37,7 +37,18 @@ def move(message_uid: str = Query(..., description="IMAP UID of the message")):
                 "imap_response": response
             }
 
-        return {"status": "moved", "message_uid": message_uid}
+        # Mark the original message for deletion
+        status, response = mail.uid('STORE', message_uid, '+FLAGS', '(\Deleted)')
+        if status != "OK":
+            return {
+                "status": "delete_failed",
+                "imap_response": response
+            }
+
+        # Finalize the deletion
+        mail.expunge()
+
+        return {"status": "moved_and_deleted", "message_uid": message_uid}
     
     except Exception as e:
         return {"status": "error", "detail": str(e)}
