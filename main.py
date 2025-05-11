@@ -31,11 +31,11 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
         if status != "OK" or not data[0]:
             return {"status": "not_found", "message_id": message_id}
 
-        email_ids = data[0].split()
-        email_id = email_ids[0]
+        # email_ids = data[0].split()
+        # email_id = email_ids[0]
 
-        mail.create("Rechnungen")  # idempotent
-        status, _ = mail.copy(email_id, "Rechnungen")
+        # mail.create("Rechnungen")  # idempotent
+        status, _ = mail.copy(message_id, "Rechnungen")
         if status != "OK":
             return {"status": "copy_failed"}
 
