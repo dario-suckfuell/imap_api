@@ -46,7 +46,7 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
             return {
                 "status": "copy_failed",
                 "email_uid": email_uid,
-                "imap_response": response
+                "imap_response": response,
                 "mailboxes": mailboxes
             }
 
