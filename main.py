@@ -49,13 +49,13 @@ def label(message_id: str = Query(..., description="Full Message-ID including an
         # Apply a custom flag (label)
         label_flag = "Rechnungen"  # No backslash for custom flags
         logging.debug(f"Applying custom flag: {label_flag}")
-        status, response = mail.store(email_uid, '+FLAGS', label_flag)
+        status, response = mail.store(email_uid, '+FLAGS', \\Flagged)
 
         if status != "OK":
             logging.error(f"Failed to apply flag: {response}")
             return {"status": "flag_failed", "detail": str(response)}
 
-        return {"status": "flagged", "message_id": message_id, "flag": label_flag}
+        return {"status": "flagged", "message_id": message_id, "flag": \\Flagged}
 
     except Exception as e:
         logging.exception("An error occurred during labeling.")
