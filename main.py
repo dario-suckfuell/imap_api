@@ -18,7 +18,7 @@ def root():
 def move(message_uid: str = Query(..., description="IMAP UID of the message")):
     EMAIL = os.environ["IMAP_EMAIL"]
     PASSWORD = os.environ["IMAP_PASSWORD"]
-    HOST = os.environ.get("IMAP_HOST", "imap.gmail.com")
+    HOST = os.environ.get("IMAP_HOST")
 
     if not message_uid.isdigit():
         return {"status": "invalid_uid", "message_uid": message_uid}
@@ -50,6 +50,41 @@ def move(message_uid: str = Query(..., description="IMAP UID of the message")):
 
         return {"status": "moved_and_deleted", "message_uid": message_uid}
     
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+    
+    finally:
+        if mail:
+            try:
+                mail.logout()
+            except:
+                pass
+
+@app.get("/label", dependencies=[Depends(verify_api_key)])
+def label(message_uid: str = Query(..., description="IMAP UID of the message to label as INVOICE")):
+    EMAIL = os.environ["IMAP_EMAIL"]
+    PASSWORD = os.environ["IMAP_PASSWORD"]
+    HOST = os.environ.get("IMAP_HOST")
+
+    if not message_uid.isdigit():
+        return {"status": "invalid_uid", "message_uid": message_uid}
+
+    mail = None
+    try:
+        mail = imaplib.IMAP4_SSL(HOST)
+        mail.login(EMAIL, PASSWORD)
+        mail.select("INBOX")
+
+        # Try standard IMAP keywords if not Gmail
+        status, response = mail.uid('STORE', message_uid, '+FLAGS', '(\Rechnungen)')
+        if status != "OK":
+            return {
+                    "status": "label_failed",
+                    "imap_response": response
+                    }
+
+        return {"status": "labeled", "label": "INVOICE", "message_uid": message_uid}
+
     except Exception as e:
         return {"status": "error", "detail": str(e)}
     
