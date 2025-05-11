@@ -38,9 +38,6 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
 
         email_uid = email_uids[0].decode()  # UID as string
 
-        # Ensure folder exists
-        mail.create("Rechnungen")
-
         # Copy using UID
         status, _ = mail.uid('COPY', email_uid, "Rechnungen")
         if status != "OK":
