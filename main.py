@@ -39,9 +39,13 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
         email_uid = email_uids[0].decode()  # UID as string
 
         # Copy using UID
-        status, _ = mail.uid('COPY', email_uid, "Rechnungen")
+        status, response = mail.uid('COPY', email_uid, "Rechnungen")
         if status != "OK":
-            return {"status": "copy_failed", "email_uid": email_uid}
+            return {
+                "status": "copy_failed",
+                "email_uid": email_uid,
+                "imap_response": response
+            }
 
         # Optional: mark for deletion (if needed)
         # mail.store(email_uid, "+FLAGS", "\\Deleted")
