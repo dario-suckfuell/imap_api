@@ -25,34 +25,35 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
         mail.login(EMAIL, PASSWORD)
         mail.select("INBOX")
 
-    # Search using UID based on Message-ID header
-    search_criteria = f'(HEADER Message-ID "{message_id}")'
-    status, data = mail.uid('SEARCH', None, search_criteria)
-    
-    if status != "OK" or not data or not data[0]:
-        return {"status": "not_found", "message_id": message_id}
-    
-    email_uids = data[0].split()
-    if not email_uids:
-        return {"status": "not_found", "message_id": message_id}
-    
-    email_uid = email_uids[0].decode()  # UID as string
-    
-    # Ensure folder exists
-    mail.create("Rechnungen")
-    
-    # Copy using UID
-    status, _ = mail.uid('COPY', email_uid, "Rechnungen")
-    if status != "OK":
-        return {"status": "copy_failed"}
+        # Search using UID based on Message-ID header
+        search_criteria = f'(HEADER Message-ID "{message_id}")'
+        status, data = mail.uid('SEARCH', None, search_criteria)
 
+        if status != "OK" or not data or not data[0]:
+            return {"status": "not_found", "message_id": message_id}
 
-        # Optional: mark for deletion
-        # mail.store(email_id, "+FLAGS", "\\Deleted")
+        email_uids = data[0].split()
+        if not email_uids:
+            return {"status": "not_found", "message_id": message_id}
+
+        email_uid = email_uids[0].decode()  # UID as string
+
+        # Ensure folder exists
+        mail.create("Rechnungen")
+
+        # Copy using UID
+        status, _ = mail.uid('COPY', email_uid, "Rechnungen")
+        if status != "OK":
+            return {"status": "copy_failed"}
+
+        # Optional: mark for deletion (if needed)
+        # mail.store(email_uid, "+FLAGS", "\\Deleted")
         # mail.expunge()
 
-    return {"status": "moved", "message_id": message_id}
+        return {"status": "moved", "message_id": message_id}
+    
     except Exception as e:
         return {"status": "error", "detail": str(e)}
+    
     finally:
         mail.logout()
