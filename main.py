@@ -46,7 +46,7 @@ def move(message_uid: str = Query(..., description="IMAP UID of the message")):
             }
 
         # Finalize the deletion
-        #mail.expunge()
+        mail.expunge()
 
         return {"status": "moved_and_deleted", "message_uid": message_uid}
     
