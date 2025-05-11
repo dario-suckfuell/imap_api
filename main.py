@@ -1,14 +1,20 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Header, HTTPException, Depends
 import imaplib
 import os
 
+API_KEY = os.environ["API_KEY"]
+
 app = FastAPI()
 
-@app.get("/")
+def verify_api_key(authorization: str = Header(...)):
+    if authorization != f"Bearer {API_KEY}":
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+@app.get("/", dependencies=[Depends(verify_api_key)])
 def root():
     return {"status": "running"}
 
-@app.get("/move")
+@app.get("/move", dependencies=[Depends(verify_api_key)])
 def move(message_id: str = Query(..., description="Full Message-ID including angle brackets")):
     EMAIL = os.environ["IMAP_EMAIL"]
     PASSWORD = os.environ["IMAP_PASSWORD"]
@@ -19,7 +25,6 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
         mail.login(EMAIL, PASSWORD)
         mail.select("INBOX")
 
-        # Search for email with exact Message-ID header
         search_criteria = f'(HEADER Message-ID "{message_id}")'
         status, data = mail.search(None, search_criteria)
 
@@ -29,12 +34,12 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
         email_ids = data[0].split()
         email_id = email_ids[0]
 
-        mail.create("Rechnungen")  # idempotent: won't fail if exists
+        mail.create("Rechnungen")  # idempotent
         status, _ = mail.copy(email_id, "Rechnungen")
         if status != "OK":
             return {"status": "copy_failed"}
 
-        # Uncomment to delete original after copy:
+        # Optional: mark for deletion
         # mail.store(email_id, "+FLAGS", "\\Deleted")
         # mail.expunge()
 
