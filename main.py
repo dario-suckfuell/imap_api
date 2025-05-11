@@ -46,7 +46,7 @@ def move(message_uid: str = Query(..., description="IMAP UID of the message")):
             }
 
         # Finalize the deletion
-        mail.expunge()
+        #mail.expunge()
 
         return {"status": "moved_and_deleted", "message_uid": message_uid}
     
@@ -76,7 +76,7 @@ def label(message_uid: str = Query(..., description="IMAP UID of the message to 
         mail.select("INBOX")
 
         # Try standard IMAP keywords if not Gmail
-        status, response = mail.uid('STORE', message_uid, '+FLAGS', '(\Rechnungen)')
+        status, response = mail.uid('STORE', message_uid, '+FLAGS', '(Rechnungen)')
         if status != "OK":
             return {
                     "status": "label_failed",
