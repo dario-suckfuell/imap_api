@@ -20,12 +20,12 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
     PASSWORD = os.environ["IMAP_PASSWORD"]
     HOST = os.environ.get("IMAP_HOST", "imap.gmail.com")
 
-    status, mailboxes = mail.list()
-
     try:
         mail = imaplib.IMAP4_SSL(HOST)
         mail.login(EMAIL, PASSWORD)
         mail.select("INBOX")
+        
+        status, mailboxes = mail.list()
 
         # Search using UID based on Message-ID header
         search_criteria = f'(HEADER Message-ID "{message_id}")'
