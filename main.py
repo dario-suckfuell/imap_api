@@ -20,6 +20,8 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
     PASSWORD = os.environ["IMAP_PASSWORD"]
     HOST = os.environ.get("IMAP_HOST", "imap.gmail.com")
 
+    status, mailboxes = mail.list()
+
     try:
         mail = imaplib.IMAP4_SSL(HOST)
         mail.login(EMAIL, PASSWORD)
@@ -37,14 +39,15 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
             return {"status": "not_found", "message_id": message_id}
 
         email_uid = email_uids[0].decode()  # UID as string
-
+        
         # Copy using UID
-        status, response = mail.uid('COPY', email_uid, "Rechnungen")
+        status, response = mail.uid('COPY', email_uid, "INBOX.Rechnungen")
         if status != "OK":
             return {
                 "status": "copy_failed",
                 "email_uid": email_uid,
                 "imap_response": response
+                "mailboxes": mailboxes
             }
 
         # Optional: mark for deletion (if needed)
