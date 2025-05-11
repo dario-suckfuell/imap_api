@@ -15,7 +15,7 @@ def root():
     return {"status": "running"}
 
 @app.get("/move", dependencies=[Depends(verify_api_key)])
-def move(message_id: str = Query(..., description="Full Message-ID including angle brackets")):
+def move(message_uid: str = Query(..., description="Full Message-ID including angle brackets")):
     EMAIL = os.environ["IMAP_EMAIL"]
     PASSWORD = os.environ["IMAP_PASSWORD"]
     HOST = os.environ.get("IMAP_HOST", "imap.gmail.com")
@@ -25,29 +25,13 @@ def move(message_id: str = Query(..., description="Full Message-ID including ang
         mail.login(EMAIL, PASSWORD)
         mail.select("INBOX")
         
-        status, mailboxes = mail.list()
-
-        # Search using UID based on Message-ID header
-        search_criteria = f'(HEADER Message-ID "{message_id}")'
-        status, data = mail.uid('SEARCH', None, search_criteria)
-
-        if status != "OK" or not data or not data[0]:
-            return {"status": "not_found", "message_id": message_id}
-
-        email_uids = data[0].split()
-        if not email_uids:
-            return {"status": "not_found", "message_id": message_id}
-
-        email_uid = email_uids[0].decode()  # UID as string
-        
         # Copy using UID
-        status, response = mail.uid('COPY', email_uid, "INBOX.Rechnungen")
+        status, response = mail.uid('COPY', message_uid, "INBOX.Rechnungen")
         if status != "OK":
             return {
                 "status": "copy_failed",
                 "email_uid": email_uid,
-                "imap_response": response,
-                "mailboxes": mailboxes
+                "imap_response": response
             }
 
         # Optional: mark for deletion (if needed)
