@@ -15,7 +15,10 @@ def root():
     return {"status": "running"}
 
 @app.get("/move", dependencies=[Depends(verify_api_key)])
-def move(message_uid: str = Query(..., description="IMAP UID of the message")):
+def move(
+    message_uid: str = Query(..., description="IMAP UID of the message"),
+    target_folder: str = Query(..., description="Target folder to move the message to")
+):
     EMAIL = os.environ["IMAP_EMAIL"]
     PASSWORD = os.environ["IMAP_PASSWORD"]
     HOST = os.environ.get("IMAP_HOST")
@@ -29,15 +32,13 @@ def move(message_uid: str = Query(..., description="IMAP UID of the message")):
         mail.login(EMAIL, PASSWORD)
         mail.select("INBOX")
 
-        # Copy using UID
-        status, response = mail.uid('COPY', message_uid, "INBOX.Rechnungen")
+        status, response = mail.uid('COPY', message_uid, target_folder)
         if status != "OK":
             return {
                 "status": "copy_failed",
                 "imap_response": response
             }
 
-        # Mark the original message for deletion
         status, response = mail.uid('STORE', message_uid, '+FLAGS', '(\Deleted)')
         if status != "OK":
             return {
@@ -45,14 +46,17 @@ def move(message_uid: str = Query(..., description="IMAP UID of the message")):
                 "imap_response": response
             }
 
-        # Finalize the deletion
         mail.expunge()
 
-        return {"status": "moved_and_deleted", "message_uid": message_uid}
-    
+        return {
+            "status": "moved_and_deleted",
+            "message_uid": message_uid,
+            "target_folder": target_folder
+        }
+
     except Exception as e:
         return {"status": "error", "detail": str(e)}
-    
+
     finally:
         if mail:
             try:
@@ -60,8 +64,12 @@ def move(message_uid: str = Query(..., description="IMAP UID of the message")):
             except:
                 pass
 
+
 @app.get("/label", dependencies=[Depends(verify_api_key)])
-def label(message_uid: str = Query(..., description="IMAP UID of the message to label as INVOICE")):
+def label(
+    message_uid: str = Query(..., description="IMAP UID of the message to label"),
+    target_label: str = Query(..., description="IMAP label to assign to the message")
+):
     EMAIL = os.environ["IMAP_EMAIL"]
     PASSWORD = os.environ["IMAP_PASSWORD"]
     HOST = os.environ.get("IMAP_HOST")
@@ -75,22 +83,26 @@ def label(message_uid: str = Query(..., description="IMAP UID of the message to 
         mail.login(EMAIL, PASSWORD)
         mail.select("INBOX")
 
-        # Try standard IMAP keywords if not Gmail
-        status, response = mail.uid('STORE', message_uid, '+FLAGS', '(Rechnungen)')
+        status, response = mail.uid('STORE', message_uid, '+FLAGS', f'({target_label})')
         if status != "OK":
             return {
-                    "status": "label_failed",
-                    "imap_response": response
-                    }
+                "status": "label_failed",
+                "imap_response": response
+            }
 
-        return {"status": "labeled", "label": "INVOICE", "message_uid": message_uid}
+        return {
+            "status": "labeled",
+            "label": target_label,
+            "message_uid": message_uid
+        }
 
     except Exception as e:
         return {"status": "error", "detail": str(e)}
-    
+
     finally:
         if mail:
             try:
                 mail.logout()
             except:
                 pass
+
