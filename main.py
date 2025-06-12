@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Query, Header, HTTPException, Depends
+from email import message_from_bytes
+
 import imaplib
 import os
 
