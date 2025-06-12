@@ -2,12 +2,18 @@ from fastapi import FastAPI, Query, Header, HTTPException, Depends
 import imaplib
 import os
 
-API_KEY = os.environ["API_KEY"]
+# Retrieve API key lazily to avoid import-time crashes when the variable
+# is not set. Applications without the required environment variable would
+# previously fail to start with a KeyError.
+API_KEY = os.getenv("API_KEY")
 
 app = FastAPI()
 
 def verify_api_key(authorization: str = Header(...)):
-    if authorization != f"Bearer {API_KEY}":
+    expected_key = API_KEY or os.getenv("API_KEY")
+    if expected_key is None:
+        raise HTTPException(status_code=500, detail="API key not configured")
+    if authorization != f"Bearer {expected_key}":
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 @app.get("/", dependencies=[Depends(verify_api_key)])
