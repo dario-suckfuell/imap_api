@@ -1,5 +1,9 @@
 from fastapi import FastAPI, Query, Header, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from email import message_from_bytes
+from email.policy import default as default_policy
+import io
+import zipfile
 
 import imaplib
 import os
