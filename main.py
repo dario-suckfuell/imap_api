@@ -154,7 +154,7 @@ def download_attachments(
                     continue
 
                 # Only include PDFs
-                if "attachment" in content_disposition and content_type == "application/pdf":
+                if content_type == "application/pdf" and any(x in content_disposition for x in ["attachment", "inline"]):
                     filename = part.get_filename()
                     if not filename:
                         continue
