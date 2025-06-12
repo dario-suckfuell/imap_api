@@ -112,3 +112,68 @@ def label(
             except:
                 pass
 
+@app.get("/attachments", dependencies=[Depends(verify_api_key)])
+def download_attachments(
+    message_uid: str = Query(..., description="IMAP UID of the message to fetch PDF attachments from")
+):
+    EMAIL = os.environ["IMAP_EMAIL"]
+    PASSWORD = os.environ["IMAP_PASSWORD"]
+    HOST = os.environ.get("IMAP_HOST")
+
+    if not message_uid.isdigit():
+        return {"status": "invalid_uid", "message_uid": message_uid}
+
+    mail = None
+    try:
+        mail = imaplib.IMAP4_SSL(HOST)
+        mail.login(EMAIL, PASSWORD)
+        mail.select("INBOX")
+
+        status, data = mail.uid('fetch', message_uid, '(RFC822)')
+        if status != "OK" or not data or data[0] is None:
+            return {"status": "fetch_failed", "imap_response": data}
+
+        raw_email = data[0][1]
+        email_message = message_from_bytes(raw_email, policy=default_policy)
+
+        pdf_found = False
+        zip_buffer = io.BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for part in email_message.walk():
+                content_disposition = part.get("Content-Disposition", "")
+                content_type = part.get_content_type()
+
+                if part.get_content_maintype() == "multipart":
+                    continue
+
+                # Only include PDFs
+                if "attachment" in content_disposition and content_type == "application/pdf":
+                    filename = part.get_filename()
+                    if not filename:
+                        continue
+                    pdf_found = True
+                    payload = part.get_payload(decode=True)
+                    zip_file.writestr(filename, payload)
+
+        if not pdf_found:
+            return {"status": "no_attachments", "message_uid": message_uid}
+
+        zip_buffer.seek(0)
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f"attachment; filename=pdf_attachments_{message_uid}.zip"
+            }
+        )
+
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+    finally:
+        if mail:
+            try:
+                mail.logout()
+            except:
+                pass
