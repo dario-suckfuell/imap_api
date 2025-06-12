@@ -144,23 +144,32 @@ def download_attachments(
 
         pdf_found = False
         zip_buffer = io.BytesIO()
+        counter = 1
 
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for part in email_message.walk():
-                content_disposition = part.get("Content-Disposition", "")
-                content_type = part.get_content_type()
+        def gather_pdfs(msg):
+            nonlocal pdf_found, counter
+            for part in msg.iter_parts():
+                maintype = part.get_content_maintype()
 
-                if part.get_content_maintype() == "multipart":
+                if maintype == "multipart":
+                    gather_pdfs(part)
                     continue
 
-                # Only include PDFs
-                if content_type == "application/pdf" and any(x in content_disposition for x in ["attachment", "inline"]):
-                    filename = part.get_filename()
-                    if not filename:
-                        continue
-                    pdf_found = True
+                if part.get_content_type() == "application/pdf":
+                    filename = part.get_filename() or f"attachment_{counter}.pdf"
+                    counter += 1
                     payload = part.get_payload(decode=True)
-                    zip_file.writestr(filename, payload)
+                    if payload is not None:
+                        zip_file.writestr(filename, payload)
+                        pdf_found = True
+                elif part.get_content_type() == "message/rfc822":
+                    nested_bytes = part.get_payload(decode=True)
+                    if nested_bytes:
+                        nested_msg = message_from_bytes(nested_bytes, policy=default_policy)
+                        gather_pdfs(nested_msg)
+
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            gather_pdfs(email_message)
 
         if not pdf_found:
             return {"status": "no_attachments", "message_uid": message_uid}
@@ -181,5 +190,5 @@ def download_attachments(
         if mail:
             try:
                 mail.logout()
-            except:
+            except Exception:
                 pass
